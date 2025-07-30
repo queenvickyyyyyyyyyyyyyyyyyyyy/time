@@ -1,0 +1,101 @@
+package Nagasaki;
+
+import robocode.*;
+import java.awt.*;
+import java.awt.geom.*;
+import robocode.TeamRobot;
+
+public class Nagasaki extends TeamRobot {
+    private boolean modoVingador = false;
+
+    public void run() {
+        setBodyColor(new Color(255, 20, 147));
+        setGunColor(new Color(255, 255, 255));
+        setRadarColor(new Color(255, 255, 255));
+        setBulletColor(new Color(186, 85, 211));
+        setScanColor(new Color(186, 85, 211));
+
+        setAdjustRadarForGunTurn(true);
+        setAdjustGunForRobotTurn(true);
+
+        while (true) {
+            if (!modoVingador) movimentacaoAleatoria();
+            setTurnRadarRight(360);
+            execute();
+        }
+    }
+	
+
+    public void onScannedRobot(ScannedRobotEvent e) {
+        travaRadar(e);
+        miraPreditiva(e);
+		if (isTeammate(event.getName())) {
+			return; // Ignorar robôs aliados
+		}
+
+        if (!modoVingador) {
+            double distancia = e.getDistance();
+            double potencia = (distancia < 100) ? 3 : (distancia < 400) ? 2 : 1;
+            if (getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10)
+                setFire(potencia);
+        } else {
+            if (getGunHeat() == 0)
+                setFire(3);
+        }
+    }
+
+    public void onHitByBullet(HitByBulletEvent e) {
+        out.println("Modo VINGADOR ativado!");
+        modoVingador = true;
+        setBodyColor(new Color(186, 85, 211));
+        setTurnRight(90 - e.getBearing());
+        setAhead(150);
+    }
+
+    public void onHitWall(HitWallEvent e) {
+        back(50);
+        setTurnRight(90);
+    }
+
+    private void travaRadar(ScannedRobotEvent e) {
+        double radarTurn = getHeading() + e.getBearing() - getRadarHeading();
+        setTurnRadarRight(normalizeBearing(radarTurn) * 2);
+    }
+
+    private void miraPreditiva(ScannedRobotEvent e) {
+        double firePower = 2;
+        double myX = getX(), myY = getY();
+        double absBearing = getHeadingRadians() + e.getBearingRadians();
+        double enemyX = myX + e.getDistance() * Math.sin(absBearing);
+        double enemyY = myY + e.getDistance() * Math.cos(absBearing);
+        double enemyHeading = e.getHeadingRadians();
+        double enemyVelocity = e.getVelocity();
+
+        double bulletSpeed = 20 - firePower * 3;
+        double deltaTime = 0;
+        double predictedX = enemyX, predictedY = enemyY;
+
+        while ((++deltaTime) * bulletSpeed < Point2D.distance(myX, myY, predictedX, predictedY)) {
+            predictedX += Math.sin(enemyHeading) * enemyVelocity;
+            predictedY += Math.cos(enemyHeading) * enemyVelocity;
+        }
+
+        double angle = Math.toDegrees(Math.atan2(predictedX - myX, predictedY - myY));
+        double gunTurn = normalizeBearing(angle - getGunHeading());
+        setTurnGunRight(gunTurn);
+    }
+
+    private void movimentacaoAleatoria() {
+        if (getDistanceRemaining() == 0 && getTurnRemaining() == 0) {
+            double angulo = Math.random() * 90 - 45;
+            setTurnRight(angulo);
+            setAhead(100 + Math.random() * 50);
+        }
+    }
+
+    private double normalizeBearing(double angle) {
+        while (angle > 180) angle -= 360;
+        while (angle < -180) angle += 360;
+        return angle;
+    }
+}
