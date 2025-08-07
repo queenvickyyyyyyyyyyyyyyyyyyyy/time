@@ -29,7 +29,7 @@ public class Nagasaki extends TeamRobot {
     public void onScannedRobot(ScannedRobotEvent e) {
         travaRadar(e);
         miraPreditiva(e);
-		if (isTeammate(event.getName())) {
+		if (isTeammate(e.getName())) {
 			return; // Ignorar robôs aliados
 		}
 
